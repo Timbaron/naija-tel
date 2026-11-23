@@ -212,9 +212,9 @@ Longest-prefix matching is utilized automatically to resolve 5-digit ranges (e.g
 
 ## MNP Provider Architecture
 
-### Extending with Custom Providers
+### Multi-Provider Support & Custom Providers
 
-You can register custom MNP lookup providers (e.g. your VTU provider, SMS gateway, or custom clearinghouse API) using `NaijaTel::extend()` in a service provider:
+NaijaTel is provider-agnostic. You can register multiple providers (e.g., your VTU aggregator, SMS gateway, or custom clearinghouse APIs) simultaneously using `NaijaTel::extend()` in a service provider:
 
 ```php
 use NaijaTel\Contracts\MnpProviderInterface;
@@ -224,17 +224,13 @@ use NaijaTel\Enums\LookupStatus;
 use NaijaTel\Enums\Network;
 use NaijaTel\Facades\NaijaTel;
 
-NaijaTel::extend('my-vtu-provider', function ($app) {
+// Register Provider 1 (e.g. Termii)
+NaijaTel::extend('termii', function ($app) {
     return new class implements MnpProviderInterface {
-        public function getName(): string
-        {
-            return 'my-vtu-provider';
-        }
+        public function getName(): string { return 'termii'; }
 
-        public function lookup(string $phoneNumber): NetworkLookupResult
-        {
-            // Call external API
-            // ...
+        public function lookup(string $phoneNumber): NetworkLookupResult {
+            // Call your provider API...
             return new NetworkLookupResult(
                 phoneNumber: $phoneNumber,
                 network: Network::AIRTEL,
@@ -248,12 +244,71 @@ NaijaTel::extend('my-vtu-provider', function ($app) {
         }
     };
 });
+
+// Register Provider 2 (e.g. VTpass)
+NaijaTel::extend('vtpass', function ($app) {
+    return new class implements MnpProviderInterface {
+        public function getName(): string { return 'vtpass'; }
+
+        public function lookup(string $phoneNumber): NetworkLookupResult {
+            // Call VTpass API...
+            return new NetworkLookupResult(
+                phoneNumber: $phoneNumber,
+                network: Network::MTN,
+                originalNetwork: Network::MTN,
+                isPorted: false,
+                verified: true,
+                method: DetectionMethod::CUSTOM,
+                status: LookupStatus::VERIFIED,
+                provider: $this->getName()
+            );
+        }
+    };
+});
 ```
 
-To use a specific provider for a single call:
+### Switching Providers On-Demand
+
+You can switch between multiple providers fluently:
 
 ```php
-$result = NaijaTel::using('my-vtu-provider')->lookup('08031234567');
+// 1. Fluent switching via using()
+$result = NaijaTel::using('termii')->lookup('08031234567');
+$result = NaijaTel::using('vtpass')->lookup('08031234567');
+
+// 2. Direct parameter specification
+$result = NaijaTel::lookup('08031234567', provider: 'vtpass');
+$isPorted = NaijaTel::isPorted('08031234567', provider: 'termii');
+
+// 3. Configure the global default in .env
+// NAIJATEL_DEFAULT_PROVIDER=termii
+```
+
+### Multi-Provider Failover & Chaining
+
+For high-availability airtime and fintech applications, you can chain multiple providers into a failover provider:
+
+```php
+NaijaTel::extend('failover', function ($app) {
+    return new class implements MnpProviderInterface {
+        public function getName(): string { return 'failover'; }
+
+        public function lookup(string $phoneNumber): NetworkLookupResult {
+            $providers = ['termii', 'vtpass'];
+
+            foreach ($providers as $providerName) {
+                try {
+                    return NaijaTel::using($providerName)->lookup($phoneNumber);
+                } catch (\Throwable $e) {
+                    logger()->warning("Provider [{$providerName}] failed: " . $e->getMessage());
+                }
+            }
+
+            // Fall back to free offline prefix inference if all external APIs fail
+            return NaijaTel::detectByPrefix($phoneNumber);
+        }
+    };
+});
 ```
 
 ### Interconnect Clearinghouse Nigeria (ICN)
