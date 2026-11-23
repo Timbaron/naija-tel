@@ -1,0 +1,67 @@
+{
+    "name": "timbaron/naija-tel",
+    "description": "Nigerian Telecom Intelligence for Laravel",
+    "keywords": [
+        "laravel",
+        "nigeria",
+        "telecom",
+        "phone-number",
+        "mnp",
+        "mtn",
+        "airtel",
+        "glo",
+        "9mobile"
+    ],
+    "homepage": "https://github.com/timbaron/naija-tel",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Timothy Akiode",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^11.0|^12.0",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/http": "^11.0|^12.0"
+    },
+    "require-dev": {
+        "mockery/mockery": "^1.6",
+        "orchestra/testbench": "^9.0|^10.0",
+        "phpunit/phpunit": "^10.5|^11.0",
+        "laravel/pint": "^1.18",
+        "phpstan/phpstan": "^1.12|^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "NaijaTel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "NaijaTel\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "NaijaTel\\NaijaTelServiceProvider"
+            ],
+            "aliases": {
+                "NaijaTel": "NaijaTel\\Facades\\NaijaTel"
+            }
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "format": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {}
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
